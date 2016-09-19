@@ -1,0 +1,127 @@
+package com.vmetrix.etl.ods.task;
+
+import java.io.File;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.springframework.batch.core.StepContribution;
+import org.springframework.batch.core.scope.context.ChunkContext;
+import org.springframework.batch.core.step.tasklet.Tasklet;
+import org.springframework.batch.repeat.RepeatStatus;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.Resource;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
+import org.springframework.jdbc.core.namedparam.SqlParameterSource;
+import org.springframework.jdbc.core.simple.SimpleJdbcCall;
+
+import com.vmetrix.etl.ods.util.OperacionesProperties;
+
+public class ValidateTask implements Tasklet {
+	
+	private String fileRepository;
+	private String fileName;
+	private String turing;
+	
+	private static final String FECHAS_MAXIMAS_EXC_NT = "Las fechas maximas de procesos COMPLETADOS para Clientes, Riesgo Credito, Curvas y Operaciones FINDUR no son iguales.";
+	private static final String FECHAS_MAXIMAS_EXC_ST = "Las fechas maximas de procesos COMPLETADOS para Clientes, Riesgo Credito, Curvas, Operaciones FINDUR y Operaciones TURING no son iguales.";
+
+	static Log logger = LogFactory.getLog(ValidateTask.class);
+	
+
+	
+	@Autowired
+    private JdbcTemplate jdbcTemplate;
+	
+	public RepeatStatus execute(StepContribution arg0, ChunkContext arg1) throws Exception {
+		logger.debug("ValidateTask --> Inicia validacion ");
+		
+		try{
+//			Date today = new Date();
+//			SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd");
+			
+		
+			String procesaTuring = getTuring();
+			
+			logger.debug("ValidateTask --> Se procesara TURING? = "+ procesaTuring);
+			logger.debug("ValidateTask --> filerepository = "+ getFileRepository());
+			logger.debug("ValidateTask --> fileName = "+ getFileName());
+			
+			SimpleJdbcCall simpleJdbcCall = new SimpleJdbcCall(jdbcTemplate).withProcedureName("validaProcesos");
+			Map<String, Object> inParamMap = new HashMap<String, Object>();
+			inParamMap.put("procesaTuring", procesaTuring);
+			SqlParameterSource in = new MapSqlParameterSource(inParamMap);
+			Map<String, Object> simpleJdbcCallResult = simpleJdbcCall.execute(in);
+			String t =  simpleJdbcCallResult.get("#result-set-1").toString();
+			if (t.contains("1")){
+				logger.debug("ValidateTask --> Se Borrara Archivo CallProcedure ");
+				deleteCallProcedureFile(getFileRepository(),getFileName());
+				
+			}else{
+				logger.debug("ValidateTask --> No se realiza Borrado ");
+				if (procesaTuring.equalsIgnoreCase("SI"))
+					throw new Exception(FECHAS_MAXIMAS_EXC_ST);
+				else
+					throw new Exception(FECHAS_MAXIMAS_EXC_NT);
+					
+			}
+			
+			
+		}catch(Exception e){
+			logger.debug("ValidateTask --> Exception!. Termina Validacion ");
+			throw e;
+		}
+		
+		logger.debug("ValidateTask --> Termina Validacion ");
+		return RepeatStatus.FINISHED;
+	}
+	
+	private void deleteCallProcedureFile(String folderRepository, String fileName) {
+		
+		File f	= new File(folderRepository);
+		File[] ficheros;
+		
+		if (f.exists()){
+			
+			ficheros = f.listFiles();
+			for (int x = 0; x < ficheros.length; x++) {
+				if(ficheros[x].getName().toLowerCase().equals(fileName.toLowerCase())){
+					ficheros[x].delete();
+				} 
+			}
+		}else {
+			logger.error("------------ No esxite el directorio"+folderRepository);
+			
+		}
+		
+	}
+	
+	
+	public String getFileRepository() {
+		return fileRepository;
+	}
+	public void setFileRepository(String fileRepository) {
+		this.fileRepository = fileRepository;
+	}
+	
+	public String getFileName() {
+		return fileName;
+	}
+	public void setFileName(String fileName) {
+		this.fileName = fileName;
+	}
+	
+	public String getTuring() {
+		return turing;
+	}
+	public void setTuring(String turing) {
+		this.turing = turing;
+	}
+	
+
+}

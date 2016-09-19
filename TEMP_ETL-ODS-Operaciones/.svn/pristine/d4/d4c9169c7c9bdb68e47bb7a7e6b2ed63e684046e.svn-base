@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:batch="http://www.springframework.org/schema/batch" xmlns:task="http://www.springframework.org/schema/task"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+                http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context.xsd
+                http://www.springframework.org/schema/batch http://www.springframework.org/schema/batch/spring-batch.xsd
+                http://www.springframework.org/schema/task
+    			http://www.springframework.org/schema/task/spring-task.xsd">
+
+	<!-- Import our beans -->
+	<import resource="classpath:/applicationContext.xml" />
+
+	<job id="operacionesJob" xmlns="http://www.springframework.org/schema/batch">
+		<step id="importCsvFileStep">
+			<tasklet>
+				<chunk reader="operacionesCsvReader" writer="operacionesWriter"
+					commit-interval="10000" />
+			</tasklet>
+			<next on="*" to="endStep" />
+			<next on="FAILED" to="failedStepCsv" />			
+		</step>
+		<step id="failedStepCsv">
+			 <tasklet ref="CleanTasklet" />
+			 <end on="FAILED" exit-code="FAILED"/>
+		</step>	
+		<step id="endStep">
+			<tasklet ref="endTasklet" />
+		</step>		
+		<listeners>
+			<listener ref="jobListener" />
+		</listeners>
+	</job>
+	<job id="simpleFileImportJob2" xmlns="http://www.springframework.org/schema/batch">
+
+		<step id="importXmlFileStep2">
+			<tasklet>
+				<chunk reader="operacionesXmlReader" writer="operacionesXMLWriter"
+					commit-interval="10000" />
+			</tasklet>
+			<next on="*" to="endStepXML" />
+			<next on="FAILED" to="failedStepXML" />			
+		</step>
+		<step id="failedStepXML">
+			 <tasklet ref="endTasklet" />
+			 <fail on="FAILED" exit-code="FAILED" />
+		</step>	
+		<step id="endStepXML">
+			<tasklet ref="endTasklet" />
+		</step>
+		<listeners>
+			<listener ref="jobListener" />
+		</listeners>		
+	</job>
+  	<job id="deleteCallProcedureFile" xmlns="http://www.springframework.org/schema/batch">
+		<step id="deleteCallProcedureFileId">
+			<tasklet ref="validateCallTasklet" />
+			<next on="*" to="endDelete" />
+       		<next on="FAILED" to="endFailedStep" />
+		</step>	
+		
+		<step id="endDelete">
+			<tasklet ref="endTasklet" />
+		</step>
+		
+		<step id="endFailedStep">
+			<tasklet ref="endFailedTask" />
+		</step>
+	
+		<listeners>
+			<listener ref="jobListener" />
+		</listeners>
+	</job> 
+	<bean id="jobListener" class="com.vmetrix.etl.ods.listener.OperacionesListener"/>
+ 	<bean id="SchedulerClass" class="com.vmetrix.etl.ods.scheduler.SchedulerClass" />
+	<!--  <task:scheduled-tasks>
+		<task:scheduled ref="SchedulerClass" method="run"
+			cron="${job.scheduler.operaciones}" />
+	</task:scheduled-tasks>--> 
+</beans>

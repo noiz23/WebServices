@@ -1,0 +1,198 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" 
+		elementFormDefault="qualified">
+
+    
+    <xs:complexType name="operationType">
+    	<xs:sequence>
+    		<xs:element name="transaction" type="transactionType"
+    			maxOccurs="1" minOccurs="1">
+    		</xs:element>
+    		<xs:element name="transactionInfo"
+    			type="transactionInfoType" maxOccurs="1" minOccurs="1">
+    		</xs:element>
+    		<xs:element name="equivalenteCredito"
+    			type="equivalenteCreditoType" maxOccurs="1" minOccurs="1">
+    		</xs:element>
+    		<xs:element name="profit" type="profitType" maxOccurs="1"
+    			minOccurs="1">
+    		</xs:element>
+    		<xs:element name="side" type="sideType"
+    			maxOccurs="unbounded" minOccurs="1">
+    		</xs:element>
+    		<xs:element name="pricing" type="pricingType"
+    			maxOccurs="unbounded" minOccurs="1">
+    		</xs:element>
+    		<xs:element name="interest" type="interestType"
+    			maxOccurs="unbounded" minOccurs="0">
+    		</xs:element>
+    		<xs:element name="cashFlow" type="cashFlowType"
+    			maxOccurs="unbounded" minOccurs="0">
+    		</xs:element>
+    	</xs:sequence>
+    	<xs:attribute name="origin" type="xs:int"></xs:attribute>
+    	<xs:attribute name="dealNum" type="xs:long"></xs:attribute>
+    	<xs:attribute name="processDate" type="xs:string"></xs:attribute>
+    </xs:complexType>
+
+    <xs:complexType name="transactionType">
+    	<xs:sequence>
+    		<xs:element name="instrumentId" type="xs:int"></xs:element>
+    		<xs:element name="portFolio" type="xs:int"></xs:element>
+    		<xs:element name="partyId" type="xs:int"></xs:element>
+    		<xs:element name="facilityId" type="xs:int"></xs:element>
+    		<xs:element name="tradeDate" type="xs:string"></xs:element>
+    		<xs:element name="startDate" type="xs:string"></xs:element>
+    		<xs:element name="endDate" type="xs:string"></xs:element>
+    		<xs:element name="et" type="xs:string"></xs:element>
+    		<xs:element name="modalidadPago" type="xs:string"></xs:element>
+    		<xs:element name="nemo" type="xs:string"></xs:element>
+    		<xs:element name="serie" type="xs:string"></xs:element>
+    		<xs:element name="tirCompra" type="xs:double"></xs:element>
+    		<xs:element name="tirMercado" type="xs:double"></xs:element>
+    		<xs:element name="strike" type="xs:double"></xs:element>
+    		<xs:element name="partySecuencia" type="xs:int"></xs:element>
+    		<xs:element name="paymentConvId" type="xs:int"></xs:element>
+    		<xs:element name="statusId" type="xs:int"></xs:element>
+    		<xs:element name="groupId" type="xs:int"></xs:element>
+    		<xs:element name="callPutId" type="xs:int"></xs:element>
+    		<xs:element name="offsetTranType" type="xs:string"></xs:element>
+    		<xs:element name="traderName" type="xs:string"></xs:element>
+    		<xs:element name="traderId" type="xs:string"></xs:element>
+    		<xs:element name="etNp" type="xs:string"></xs:element>
+    	</xs:sequence>    	
+    </xs:complexType>
+
+    <xs:complexType name="transactionInfoType">
+    	<xs:sequence>
+    		<xs:element name="canalTransaccionalId" type="xs:int"></xs:element>
+    		<xs:element name="medioTransactionalID" type="xs:int"></xs:element>
+    		<xs:element name="tcCosto" type="xs:double"></xs:element>
+    		<xs:element name="tcCliente" type="xs:double"></xs:element>
+    		<xs:element name="paridadCosto" type="xs:double"></xs:element>
+    		<xs:element name="paridadCliente" type="xs:double"></xs:element>
+    		<xs:element name="spreadTc" type="xs:double"></xs:element>
+    		<xs:element name="spreadParidad" type="xs:double"></xs:element>
+    		<xs:element name="fxSpotCliente" type="xs:double"></xs:element>
+    		<xs:element name="fxForwardCosto" type="xs:double"></xs:element>
+    		<xs:element name="fxForwardCliente" type="xs:double"></xs:element>
+    		<xs:element name="puntosFwd" type="xs:double"></xs:element>
+    		<xs:element name="fxUfSpot" type="xs:double"></xs:element>
+    		<xs:element name="fxUfTasaCosto" type="xs:double"></xs:element>
+    		<xs:element name="fxUfTasaMargen" type="xs:double"></xs:element>
+    		<xs:element name="fxUfTasaCliente" type="xs:double"></xs:element>
+    		<xs:element name="fxSpotMargen" type="xs:double"></xs:element>
+    		<xs:element name="fxFwdMargen" type="xs:double"></xs:element>
+    		<xs:element name="fxUfTasaSuciaCosto" type="xs:double"></xs:element>
+    		<xs:element name="fxUfTasaSuciaCliente" type="xs:double"></xs:element>
+    		<xs:element name="reference" type="xs:string"></xs:element>
+    		<xs:element name="nombreCliente" type="xs:string"></xs:element>
+    		<xs:element name="idCliente" type="xs:string"></xs:element>
+    		<xs:element name="indicadorFx" type="xs:string"></xs:element>
+    		<xs:element name="observaciones" type="xs:string"></xs:element>
+    	</xs:sequence>    	
+    </xs:complexType>
+
+    <xs:complexType name="equivalenteCreditoType">
+    	<xs:sequence>
+    		<xs:element name="creditoCorporativo" type="xs:double"></xs:element>
+    		<xs:element name="creditoNormativo" type="xs:double"></xs:element>
+    		<xs:element name="creditoFactor" type="xs:double"></xs:element>
+    		<xs:element name="creditoFactorInterno" type="xs:double"></xs:element>
+    		<xs:element name="creditoFactorNormativo" type="xs:double"></xs:element>
+    	</xs:sequence>
+    </xs:complexType>
+
+    <xs:complexType name="profitType">
+    	<xs:sequence>
+    		<xs:element name="currencyId" type="xs:int"></xs:element>
+    		<xs:element name="value" type="xs:double"></xs:element>
+    		<xs:element name="ccy" type="xs:int"></xs:element>
+    		<xs:element name="mesaClientesCLP" type="xs:double"></xs:element>
+    		<xs:element name="mesaTradingClp" type="xs:double"></xs:element>
+    		<xs:element name="mesaClientesUsd" type="xs:double"></xs:element>
+    		<xs:element name="mesaTradingUsd" type="xs:double"></xs:element>
+    		<xs:element name="totalUsd" type="xs:double"></xs:element>
+    		<xs:element name="totalClp" type="xs:double"></xs:element>
+    	</xs:sequence>    	
+    </xs:complexType>
+
+    <xs:complexType name="sideType">
+    	<xs:sequence>
+    		<xs:element name="currencyId" type="xs:int"></xs:element>
+    		<xs:element name="rateTypeId" type="xs:int"></xs:element>
+    		<xs:element name="yieldBasisId" type="xs:int"></xs:element>
+    		<xs:element name="curCurrencyId" type="xs:int"></xs:element>
+    		<xs:element name="type" type="xs:string"></xs:element>
+    		<xs:element name="notional" type="xs:double"></xs:element>
+    		<xs:element name="rate" type="xs:double"></xs:element>
+    		<xs:element name="rateSpread" type="xs:double"></xs:element>
+    		<xs:element name="frecPago" type="xs:double"></xs:element>
+    		<xs:element name="resetP" type="xs:double"></xs:element>
+    		<xs:element name="fixFlt" type="xs:string"></xs:element>
+    		<xs:element name="projectionIndex" type="xs:string"></xs:element>
+    	</xs:sequence>
+    	<xs:attribute name="sideId" type="xs:int"></xs:attribute>    	
+    </xs:complexType>
+    
+    <xs:complexType name="pricingType">
+    	<xs:sequence>
+    		<xs:element name="sideId" type="xs:int"></xs:element>
+    		<xs:element name="mtm" type="xs:double"></xs:element>
+    		<xs:element name="mtmCcy" type="xs:double"></xs:element>
+    		<xs:element name="baseMtm" type="xs:double"></xs:element>
+    		<xs:element name="baseMtmUsd" type="xs:double"></xs:element>
+    		<xs:element name="delta" type="xs:double"></xs:element>
+    		<xs:element name="gamma" type="xs:double"></xs:element>
+    		<xs:element name="vega" type="xs:double"></xs:element>
+    		<xs:element name="beta" type="xs:double"></xs:element>
+    		<xs:element name="rhoLocal" type="xs:double"></xs:element>
+    		<xs:element name="rhoForanea" type="xs:double"></xs:element>
+    		<xs:element name="theta" type="xs:double"></xs:element>
+    		<xs:element name="volga" type="xs:double"></xs:element>
+    		<xs:element name="pnl" type="xs:double"></xs:element>
+    		<xs:element name="unrealizedPnl" type="xs:double"></xs:element>
+    		<xs:element name="pnlFxUnrealized" type="xs:double"></xs:element>
+    		<xs:element name="currentCash" type="xs:double"></xs:element>
+    		<xs:element name="baseUnrealizedPnl" type="xs:double"></xs:element>
+    	</xs:sequence>    	
+    </xs:complexType>
+
+    <xs:complexType name="interestType">
+    	<xs:sequence>
+    		<xs:element name="sideId" type="xs:int">
+    			<xs:annotation>
+    				<xs:documentation>Ejemplo de documentaicon</xs:documentation>
+    			</xs:annotation></xs:element>
+    		<xs:element name="startDate" type="xs:string"></xs:element>
+    		<xs:element name="endDate" type="xs:string"></xs:element>
+    		<xs:element name="paymentDate" type="xs:string"></xs:element>
+    		<xs:element name="fixingDate" type="xs:string"></xs:element>
+    		<xs:element name="accountingDate" type="xs:string"></xs:element>
+    		<xs:element name="rate" type="xs:double"></xs:element>
+    		<xs:element name="payment" type="xs:double"></xs:element>
+    		<xs:element name="npv" type="xs:double"></xs:element>
+    		<xs:element name="fixingRate" type="xs:double"></xs:element>
+    		<xs:element name="df" type="xs:double"></xs:element>
+    	</xs:sequence>
+    	<xs:attribute name="interestId" type="xs:int"></xs:attribute>    	
+    </xs:complexType>
+
+    <xs:complexType name="cashFlowType">
+    	<xs:sequence>
+    		<xs:element name="sideId" type="xs:int"></xs:element>
+    		<xs:element name="startDate" type="xs:string"></xs:element>
+    		<xs:element name="endDate" type="xs:string"></xs:element>
+    		<xs:element name="accountingDate" type="xs:string"></xs:element>
+    		<xs:element name="fixingDate" type="xs:string"></xs:element>
+    		<xs:element name="amount" type="xs:double"></xs:element>
+    		<xs:element name="npv" type="xs:double"></xs:element>
+    		<xs:element name="fixingRate" type="xs:double"></xs:element>
+    		<xs:element name="df" type="xs:double"></xs:element>
+    	</xs:sequence>
+    	<xs:attribute name="cashFlowId" type="xs:int"></xs:attribute>
+    	<xs:attribute name="cashFlowTypeId" type="xs:int"></xs:attribute>
+    </xs:complexType>
+    <xs:element name="operation" type="operationType"></xs:element>
+    
+</xs:schema>

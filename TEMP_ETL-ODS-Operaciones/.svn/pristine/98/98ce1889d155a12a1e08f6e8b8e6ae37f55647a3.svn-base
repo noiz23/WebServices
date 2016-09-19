@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:batch="http://www.springframework.org/schema/batch"
+       xmlns:jdbc="http://www.springframework.org/schema/jdbc"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+                http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context.xsd
+                http://www.springframework.org/schema/batch http://www.springframework.org/schema/batch/spring-batch.xsd
+                http://www.springframework.org/schema/jdbc http://www.springframework.org/schema/jdbc/spring-jdbc.xsd">
+    <context:annotation-config />
+
+    <!-- Component scan to find all Spring components -->
+    <context:component-scan base-package="com.vmetrix.etl.ods" />
+    
+    
+    
+    <!-- Job Repository: used to persist the state of the batch job -->
+    <bean id="jobRepository" class="org.springframework.batch.core.repository.support.JobRepositoryFactoryBean">
+        <property name="dataSource" ref="dataSource" />
+        <property name="transactionManager" ref="transactionManager" />
+        <property name="databaseType" value="SQLSERVER" /> 
+    </bean>
+
+    <!-- Job Launcher: creates the job and the job state before launching it -->
+    <bean id="jobLauncher" class="org.springframework.batch.core.launch.support.SimpleJobLauncher">
+        <property name="jobRepository" ref="jobRepository" />
+    </bean>
+
+    <bean id="transactionManager" class="org.springframework.batch.support.transaction.ResourcelessTransactionManager"/>
+    
+    
+    <!-- Data source - connect to a SQL server instance running on the local machine -->
+    <bean id="dataSource" class="org.apache.commons.dbcp.BasicDataSource" lazy-init="true" destroy-method="close">
+		<property name="driverClassName" value="${db.driverClassName}" />
+		<property name="url" value="${db.url}" />
+		<property name="username" value="${db.username}" />
+		<property name="password" value="${db.password}" />
+  	</bean>
+
+    <!-- Create meta-tables -->
+    <jdbc:initialize-database data-source="dataSource">
+        <jdbc:script location="classpath:sql/schema-drop-sqlserver.sql" /> 
+        <jdbc:script location="classpath:sql/schema-sqlserver.sql" />
+    </jdbc:initialize-database>
+
+     <bean id="jdbcTemplate" class="org.springframework.jdbc.core.JdbcTemplate">
+        <property name="dataSource" ref="dataSource" />
+    </bean> 
+
+
+
+    <!-- Reader bean for OPERATIONS CSV -->
+    <bean id="operacionesCsvReader" class="org.springframework.batch.item.file.FlatFileItemReader" scope="step">
+       <property name="resource" value="file:#{jobParameters['input.file.name']}" />
+        <!-- Skip the first line of the file because this is the header that defines the fields -->
+        <property name="linesToSkip" value="1" />
+        <!-- Defines how we map lines to objects -->
+        <property name="lineMapper">
+            <bean class="org.springframework.batch.item.file.mapping.DefaultLineMapper">
+                <!-- The lineTokenizer divides individual lines up into units of work -->
+                <property name="lineTokenizer">
+                    <bean class="org.springframework.batch.item.file.transform.DelimitedLineTokenizer">
+                        <!-- Names of the CSV columns -->
+                        <property name="names" value="transaction_deal_num,transaction_status_id,transaction_trade_date,transaction_start_date,transaction_end_date,transaction_ET,transaction_ET_NP,transaction_modalidad_pago,transaction_paymentconv_id,transaction_nemo,transaction_serie,transaction_TIR_compra,transaction_TIR_mercado,transaction_strike,transaction_id_group,side_id,side_type,side_fix_flt,side_frec_p,side_reset_p,side_notional,side_notional_ccy_id,side_payment_ccy_id,side_rate,side_rate_spread,side_rate_type_id,side_projection_index,side_yield_basis_id,interest_id,interest_start_date,interest_end_date,interest_payment_date,interest_fixing_date,interest_fixing_rate,interest_accounting_date,interest_rate,interest_payment,interest_df,interest_npv,cashflow_id,cashflowtype_id,cashflow_start_date,cashflow_end_date,cashflow_accounting_date,cashflow_fixing_date,cashflow_fixing_rate,cashflow_amount,cashflow_df,cashflow_npv,facility_id,transaction_info_tc_costo,transaction_info_tc_cliente,transaction_info_paridad_costo,transaction_info_paridad_cliente,transaction_info_spread_tc,transaction_info_spread_paridad,transaction_info_fx_spot_cliente,transaction_info_fx_fwd_costo,transaction_info_fx_fwd_cliente,transaction_info_puntos_fwd,transaction_info_fx_uf_spot,transaction_info_fx_uf_tasa_costo,transaction_info_fx_uf_tasa_margen,transaction_info_fx_uf_tasa_cliente,transaction_info_fx_spot_margen,transaction_info_fx_fwd_margen,transaction_info_fx_uf_tasa_sucia_costo,transaction_info_fx_uf_tasa_sucia_cliente,equivalente_credito_corporativo,equivalente_credito_normativo,equivalente_credito_factor,equivalente_credito_factor_inter,equivalente_credito_factor_normativo,medio_transaccional_id,canal_transaccional_id,profit_value,profit_ccy_id,profit_mesa_trading_CLP,profit_mesa_clientes_CLP,profit_mesa_clientes_USD,profit_mesa_trading_USD,profit_total_USD,profit_total_CLP,portfolio_id,instrument_id,product_id,party_id,party_rut,party_secuencia,pricing_mtm,pricing_mtm_ccy_id,pricing_base_mtm,pricing_base_mtm_USD,pricing_pnl,pricing_unrealized_pnl,pricing_base_unrealized_pnl,pricing_pnl_fx_unrealized,pricing_current_cash,pricing_delta,pricing_gamma,pricing_vega,pricing_beta,pricing_rho_local,pricing_rho_foranea,pricing_theta,pricing_volga,transaction_offset_tran_type,transaction_info_reference,transaction_trader_name,transaction_trader_id,transaction_info_nombre_cliente,transaction_info_id_cliente,transaction_info_indicador_fx,transaction_info_observaciones" />
+                    </bean>
+                </property>
+                <!-- The fieldSetMapper maps a line in the file to a Product object -->
+                <property name="fieldSetMapper">
+                    <bean class="com.vmetrix.etl.ods.reader.OperacionesFieldSetMapper">
+                    	<property name="resource" value="file:#{jobParameters['input.file.name']}" />
+                    </bean>
+                </property>
+            </bean>
+        </property>
+    </bean>
+    
+  <bean id="validateCallTasklet" class="com.vmetrix.etl.ods.task.ValidateTask"> 
+   	<property name="turing" value="${procesa.turing}" />
+   	<property name="fileRepository" value="${folder.files}" />
+   	<property name="fileName" value="${call.file}" />
+  </bean>
+    
+
+	<bean id="endTasklet" class="com.vmetrix.etl.ods.task.EndTask"/>
+	
+	<bean id="endFailedTask" class="com.vmetrix.etl.ods.task.EndFailedTask"/>
+	 
+     <bean id="operacionesXmlReader" class="org.springframework.batch.item.xml.StaxEventItemReader" scope="step">
+
+		<property name="resource" value="file:#{jobParameters['input.file.name']}" />
+
+		<property name="fragmentRootElementName" value="Operacion" />
+
+		<property name="unmarshaller">
+			<bean class="org.springframework.oxm.jaxb.Jaxb2Marshaller">
+				<property name="classesToBeBound">
+					<list>
+						<value>com.vmetrix.etl.ods.model.OperacionesDTO</value>
+					</list>
+				</property>
+			</bean>
+		</property>
+	</bean>
+
+    <bean id="operacionesWriter" class="com.vmetrix.etl.ods.writer.OperacionesItemWriter" scope="step">
+    	<property name="resource" value="file:#{jobParameters['input.file.name']}" />
+    </bean>
+    <bean id="operacionesXMLWriter" class="com.vmetrix.etl.ods.writer.OperacionesXMLItemWriter" scope="step">
+    	<property name="resource" value="file:#{jobParameters['input.file.name']}" />
+    </bean>
+       
+    <bean id="fusionProperties"	class="com.vmetrix.etl.ods.util.OperacionesProperties">
+		<property name="file_repository" value="${folder.files}" />
+		<property name="procesaTuring" value="${procesa.turing}" />
+	</bean>
+	<bean class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer">
+		<property name="location" value="file:///C:/ETL-ODS//properties/etl-ods.properties" />
+	</bean>
+
+
+</beans>

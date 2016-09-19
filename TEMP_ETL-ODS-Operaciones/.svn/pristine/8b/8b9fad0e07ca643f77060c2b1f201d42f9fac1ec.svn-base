@@ -1,0 +1,174 @@
+package com.vmetrix.etl.ods.scheduler;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.springframework.batch.core.Job;
+import org.springframework.batch.core.JobExecution;
+import org.springframework.batch.core.JobParameters;
+import org.springframework.batch.core.JobParametersBuilder;
+import org.springframework.batch.core.JobParametersInvalidException;
+import org.springframework.batch.core.launch.JobLauncher;
+import org.springframework.batch.core.repository.JobExecutionAlreadyRunningException;
+import org.springframework.batch.core.repository.JobInstanceAlreadyCompleteException;
+import org.springframework.batch.core.repository.JobRestartException;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.support.ClassPathXmlApplicationContext;
+import org.springframework.dao.DuplicateKeyException;
+import org.springframework.stereotype.Component;
+
+import com.vmetrix.etl.ods.util.OperacionesProperties;
+
+@Component
+public class SchedulerClass {
+
+	private static final String PROCESAR_TURING = "SI";
+	private static final String FUSION_PROPERTIES = "fusionProperties";
+	static Log logger = null;
+	private static final String ERROR = "ERROR";
+	private static final String CSV_FILE = ".csv";
+	private static final String XML_FILE = ".xml";
+	private static final String OPERACIONES_FINDUR = "vigente_findur";
+	private static final String OPERACIONES_TURINGB = "vigente_turing-bac";
+	private static final String MENSAJE_REPROCESO1="Ya se ha procesado el archivo ";
+	private static final String MENSAJE_REPROCESO2=". Para reprocesarlo, renombre el archivo agregando la hora (_hhmm) despues de la fecha.";
+	
+	private static String FOLDER_FILES=null;
+	private static String procesaTuring="";
+
+	private JobExecution execution;
+
+	@Autowired
+	private JobLauncher jobLauncher;
+	
+	private Job job;
+	
+	static String[] springConfig  = 
+		{	"applicationContext.xml",
+			"jobs/file-import-job.xml" 
+		};
+	static ApplicationContext context =new ClassPathXmlApplicationContext(springConfig);
+
+	
+	public void run() throws Exception{
+		logger = LogFactory.getLog(SchedulerClass.class);
+		
+		logger.debug("------------ Calling Run Operaciones");
+		
+		
+		//context = new ClassPathXmlApplicationContext(springConfig);
+		OperacionesProperties properties;
+		File f;
+		List<String> csvOperaciones;
+		List<String> xml;
+		File[] ficheros;
+		JobParametersBuilder jpBuilder;
+		String nombreArch = "";
+	
+		try {
+			
+			properties = (OperacionesProperties) context.getBean(FUSION_PROPERTIES);
+			FOLDER_FILES=properties.getFile_repository();
+			procesaTuring=properties.getProcesaTuring();
+			
+			logger.debug("Se procesaran archivos XML (Turing)? = "+ procesaTuring);
+			
+			f = new File(FOLDER_FILES);
+			csvOperaciones = new ArrayList<String>();
+			xml = new ArrayList<String>();
+			if (f.exists()){
+				
+				ficheros = f.listFiles();
+				for (int x = 0; x < ficheros.length; x++) {
+					if(ficheros[x].getName().toLowerCase().contains(OPERACIONES_FINDUR) && ficheros[x].getName().toLowerCase().contains(CSV_FILE)&& !(ficheros[x].getName().contains(ERROR))){
+						csvOperaciones.add(ficheros[x].getCanonicalPath());
+					} else if (ficheros[x].getName().toLowerCase().contains(OPERACIONES_TURINGB)&& ficheros[x].getName().toLowerCase().contains(XML_FILE) && !(ficheros[x].getName().contains(ERROR))) {
+						xml.add(ficheros[x].getCanonicalPath());
+					}
+				}
+			}else {
+				logger.error("------------ No esxite el directorio"+FOLDER_FILES);
+				
+			}
+			
+			if(csvOperaciones.size()>0){
+				
+				for(String name : csvOperaciones){
+					jobLauncher = (JobLauncher) context.getBean("jobLauncher");
+					job = (Job) context.getBean("operacionesJob");//simpleFileImportJobPartyTable
+					jpBuilder = new   JobParametersBuilder().addString("input.file.name", name);
+					nombreArch = name;
+					execution = jobLauncher.run(job, jpBuilder.toJobParameters());
+					
+				}
+			}
+			
+			if(procesaTuring.equalsIgnoreCase(PROCESAR_TURING)){
+
+				if(xml.size()>0){
+					
+					for(String name : xml){
+						jobLauncher = (JobLauncher) context.getBean("jobLauncher");
+						jpBuilder = new   JobParametersBuilder().addString("input.file.name", name);
+						nombreArch = name;
+						job = (Job) context.getBean("simpleFileImportJob2");
+						execution = jobLauncher.run(job, jpBuilder.toJobParameters());
+							
+					}
+				}
+			}
+			
+			if(xml.size()>0 || csvOperaciones.size()>0){
+				//Execute Procedures
+				jobLauncher = (JobLauncher) context.getBean("jobLauncher");
+				job = (Job) context.getBean("deleteCallProcedureFile");
+				execution = jobLauncher.run(job, new JobParameters());
+				
+			}
+			
+
+		
+		} catch (JobExecutionAlreadyRunningException e) {
+			logger.debug("-----> Running....");
+//			e.printStackTrace();
+		} catch (JobRestartException e) {	
+			logger.warn("-----> JobRestartException ",e);
+//			e.printStackTrace();
+		} catch (JobInstanceAlreadyCompleteException e) {
+			logger.warn(e.getMessage());
+//			logger.warn(MENSAJE_REPROCESO1 + nombreArch + MENSAJE_REPROCESO2);
+			throw new Exception(MENSAJE_REPROCESO1 + nombreArch + MENSAJE_REPROCESO2);
+		} catch (JobParametersInvalidException e) {	
+			logger.warn("-----> JobParametersInvalidException ",e);
+//			e.printStackTrace();
+		} catch (IOException e) {
+			logger.error("-----> IOException ",e);
+			throw e;
+		} catch (DuplicateKeyException e) {
+			logger.debug("-----> Running.......");
+		}catch (Exception e) {
+			logger.error("-----> Exception ",e);
+			throw e;
+		}finally {
+			if(execution!=null)
+			execution.stop();
+			job=null;
+			properties=null;
+			f=null;
+			csvOperaciones=null;
+			xml=null;
+			ficheros=null;
+			jobLauncher=null;
+			jpBuilder=null;
+			logger=null;
+			
+		}
+	}
+	
+
+}

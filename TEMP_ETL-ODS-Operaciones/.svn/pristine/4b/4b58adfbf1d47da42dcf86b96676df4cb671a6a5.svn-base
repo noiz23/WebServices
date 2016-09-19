@@ -1,0 +1,150 @@
+package com.vmetrix.etl.ods.listener;
+
+import java.io.File;
+import java.io.IOException;
+import java.sql.Timestamp;
+import java.text.DecimalFormat;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.List;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.joda.time.DateTime;
+import org.springframework.batch.core.BatchStatus;
+import org.springframework.batch.core.JobExecution;
+import org.springframework.batch.core.JobExecutionListener;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
+
+import com.vmetrix.obtain.numLines.NumLinesFile;
+import com.vmetrix.obtain.process.date.ProcessDate;
+
+public class OperacionesListener implements JobExecutionListener {
+	static Log logger = LogFactory.getLog(OperacionesListener.class);
+	private static final String ERROR = "ERROR";
+	private static final String INSERT_PROCESOS = "INSERT INTO [dbo].[PROCESOS] ([PROCESO],[FECHA_INICIO],[ESTADO],[ARCHIVO_PROCESADO],[ORIGEN])  VALUES  (?,?,?,?,?)";
+	private static final String UPDATE_PROCESOS = "UPDATE [dbo].[PROCESOS] SET [FECHA_TERMINO] = ? ,[ESTADO] = ?,[REGISTROSxARCHIVO] = ?,[REGISTROS_DWT] = ? WHERE PROCESO = ? AND FECHA_INICIO = ? AND ARCHIVO_PROCESADO = ?";
+	private static final String NUM_REG_F = "SELECT COUNT(1) FROM TRANSACTIONT WHERE CAST(TRANSACTION_PROCESS_DATE  AS varchar(10))= ? AND TRANSACTION_ORIGEN=1";
+	private static final String NUM_REG_T = "SELECT COUNT(1) FROM TRANSACTIONT WHERE CAST(TRANSACTION_PROCESS_DATE  AS varchar(10))= ? AND TRANSACTION_ORIGEN=2";
+	private static final String COMPLETADO ="Completado";
+	private static final String EN_EJECUCION="En ejecucion";
+	private static final String EJECUCION_CON_ERROR ="Error";
+	private static final String PROCESO = "Operaciones";
+	private static final String ORIGENF = "Findur";
+	private static final String ORIGENT = "Turing";
+	private static String typeFileF="opf";
+	private static String typeFileT="opt";
+	private static String JOB_DEL = "deleteCallProcedureFile";
+	
+	DecimalFormat formateador = new DecimalFormat("###.###");
+	private DateTime startTime, stopTime;
+	long total = 0;
+	private Date date;
+	private static Timestamp fechaInicio,fechaTermino;
+	private static File file;
+	private static long nlines, count;
+	
+	@Autowired
+	private JdbcTemplate jdbcTemplate;
+	public void afterJob(JobExecution arg0) {
+
+		stopTime = new DateTime();
+		logger.debug("Job termino :" +arg0.getJobInstance().getJobName()  + " :" + stopTime);
+		total = getTimeInMillis(startTime, stopTime);
+		if(!JOB_DEL.equalsIgnoreCase(arg0.getJobInstance().getJobName())){
+		logger.debug("Termino de procesamiento para archivo  " + arg0.getJobParameters().getString("input.file.name"));
+		}
+		logger.debug("Tiempo Total en ms :" + total);
+		logger.debug("Tiempo de procesamiento de archivo en minutos =  " + formateador.format((((double) total / 1000) / 60)));
+		String fileStr = arg0.getJobParameters().getString("input.file.name");
+		String processDate = null;
+		if(fileStr!=null){
+			if(file.getName().toLowerCase().contains(ORIGENF.toLowerCase())){
+				processDate=ProcessDate.getProcessDate(file.getName(), typeFileF);
+			}else{
+				processDate=ProcessDate.getProcessDate(file.getName(), typeFileT);
+			}
+		}
+			
+		
+		try {
+			date=new Date();
+			fechaTermino= new Timestamp(date.getTime());
+			if(!JOB_DEL.equalsIgnoreCase(arg0.getJobInstance().getJobName())){
+				nlines = NumLinesFile.getNumLines(file);
+				if(file.getName().toLowerCase().contains(ORIGENF.toLowerCase())){
+					count = jdbcTemplate.queryForObject(NUM_REG_F, new Object[] { processDate },Long.class);
+				}else{
+					count = jdbcTemplate.queryForObject(NUM_REG_T, new Object[] { processDate },Long.class);
+				}
+			}
+			
+			if(fileStr!=null){
+					file = new File(fileStr);
+					date=new Date();
+					fechaTermino= new Timestamp(date.getTime());
+					if (arg0.getStatus() == BatchStatus.COMPLETED) {
+						jdbcTemplate.update(UPDATE_PROCESOS,fechaTermino,COMPLETADO,nlines,count,PROCESO,fechaInicio,file.getName());
+						backupFile(file);
+						logger.debug("Job completado satisfactoriamente");
+					} else {
+						jdbcTemplate.update(UPDATE_PROCESOS,fechaTermino,EJECUCION_CON_ERROR,nlines,count,PROCESO,fechaInicio,file.getName());
+						renameErrorFile(file);
+						logger.debug("Se han presentado Excepciones en el Job: ");
+						List<Throwable> exceptionList = arg0.getAllFailureExceptions();
+						for (Throwable th : exceptionList) {
+							logger.debug("exception :" + th.getLocalizedMessage());
+						}
+		
+					}
+			}
+		} catch (Exception e) {
+			logger.debug("Se han presentado Excepciones al finalizar el job:  "+ e);
+			logger.debug("Status job : "+ arg0.getStatus());
+		}
+
+	}
+
+	public void beforeJob(JobExecution arg0) {
+		startTime = new DateTime();
+		date=new Date();
+		fechaInicio = new Timestamp(date.getTime());
+			if(arg0.getJobParameters().getString("input.file.name")!=null){
+				file = new File(arg0.getJobParameters().getString("input.file.name"));
+				if(file.getName().toLowerCase().contains(ORIGENF.toLowerCase())){
+					jdbcTemplate.update(INSERT_PROCESOS,PROCESO,fechaInicio,EN_EJECUCION,file.getName(),ORIGENF);
+				}else{
+					jdbcTemplate.update(INSERT_PROCESOS,PROCESO,fechaInicio,EN_EJECUCION,file.getName(),ORIGENT);
+				}
+				logger.debug("Job inicia  :" + startTime);
+				logger.debug("Inicio de procesamiento para archivo  " + file);
+			}
+		
+		
+	}
+	
+	private long getTimeInMillis(DateTime start, DateTime stop) {
+		return stop.getMillis() - start.getMillis();
+	}
+
+	private static void backupFile(File source) throws IOException {
+		String fileOriginalName = source.getCanonicalPath().substring(0, source.getCanonicalPath().length() - 4);
+		Date dNow = new Date();
+		SimpleDateFormat ft = new SimpleDateFormat("yyyyMMdd HHmmss");
+		source.renameTo(new File(fileOriginalName + "_" + ft.format(dNow) + ".bak"));
+
+	}
+
+	private static void renameErrorFile(File source) throws IOException {
+		String typeFile = source.getCanonicalPath().substring(source.getCanonicalPath().length() - 4,
+				source.getCanonicalPath().length());
+		String fileOriginalName = source.getCanonicalPath().substring(0, source.getCanonicalPath().length() - 4);
+		if (!fileOriginalName.contains(ERROR)) {
+			Date dNow = new Date();
+			SimpleDateFormat ft = new SimpleDateFormat("yyyyMMdd HHmmss");
+			source.renameTo(new File(fileOriginalName + "_" + ERROR + "_" + ft.format(dNow) + typeFile));
+		}
+	}	
+
+}
