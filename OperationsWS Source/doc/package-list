@@ -1,0 +1,9 @@
+cl.vmetrix.operation.channels
+cl.vmetrix.operation.createxml.object
+cl.vmetrix.operation.persistence
+cl.vmetrix.operation.persistence.model
+cl.vmetrix.operation.xml.model
+cl.vmetrix.spring
+cl.vmetrix.webservices.channels
+cl.vmetrix.webservices.proxy
+cl.vmetrix.webservices.proxy.client
